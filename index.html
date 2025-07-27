@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Catbox Lite</title>
+  <style>
+    :root{
+      --bg:#111827;
+      --card:#1f2937;
+      --accent:#3b82f6;
+      --text:#f9fafb;
+    }
+    *{box-sizing:border-box;font-family:system-ui,Segoe UI,Roboto}
+    body{margin:0;height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg);color:var(--text)}
+    .card{background:var(--card);padding:2.5rem 3rem;border-radius:1rem;box-shadow:0 10px 30px rgba(0,0,0,.4);max-width:420px;width:90%;text-align:center}
+    .dropzone{border:2px dashed var(--accent);padding:2.5rem 1rem;border-radius:.75rem;cursor:pointer;transition:.25s}
+    .dropzone:hover{background:#2563eb22}
+    .dropzone.dragover{background:#3b82f633;border-color:#60a5fa}
+    input[type=file]{display:none}
+    button{margin-top:1rem;background:var(--accent);color:#fff;border:none;padding:.75rem 1.5rem;border-radius:.5rem;font-size:1rem;cursor:pointer;transition:.2s}
+    button:disabled{opacity:.6;cursor:not-allowed}
+    .progress{margin-top:1rem;height:6px;background:#374151;border-radius:3px;overflow:hidden}
+    .progress div{height:100%;background:var(--accent);width:0%;transition:width .3s}
+    .link{margin-top:1rem;word-break:break-all;font-size:.9rem}
+    .link a{color:var(--accent)}
+    .title{font-size:1.5rem;margin-bottom:.5rem}
+    .subtitle{font-size:.9rem;opacity:.7;margin-bottom:1.5rem}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">Catbox Lite</div>
+    <div class="subtitle">Drag & drop atau pilih file untuk upload</div>
+
+    <label class="dropzone" id="dropzone">
+      <input type="file" id="fileInput">
+      <span id="labelText">Pilih file atau drop disini</span>
+    </label>
+
+    <button id="uploadBtn" disabled>Upload</button>
+
+    <div class="progress" id="progressBar" style="display:none">
+      <div></div>
+    </div>
+
+    <div class="link" id="result"></div>
+  </div>
+
+  <script>
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('fileInput');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const progressBar = document.getElementById('progressBar');
+    const result = document.getElementById('result');
+    const labelText = document.getElementById('labelText');
+
+    let file = null;
+
+    // Drag & drop
+    ['dragenter','dragover','dragleave','drop'].forEach(evt=>{
+      dropzone.addEventListener(evt,e=>{
+        e.preventDefault();
+        dropzone.classList.toggle('dragover', evt==='dragenter' || evt==='dragover');
+      });
+    });
+    dropzone.addEventListener('drop', e=>{
+      const files = e.dataTransfer.files;
+      if(files.length) handleFile(files[0]);
+    });
+    fileInput.addEventListener('change', ()=> handleFile(fileInput.files[0]));
+
+    function handleFile(selected){
+      file = selected;
+      labelText.textContent = file.name;
+      uploadBtn.disabled = false;
+    }
+
+    uploadBtn.addEventListener('click', async ()=>{
+      if(!file) return;
+      uploadBtn.disabled = true;
+      progressBar.style.display='block';
+      progressBar.firstElementChild.style.width='0%';
+
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', `/api/upload?filename=${encodeURIComponent(file.name)}`);
+      xhr.upload.onprogress = e=>{
+        if(e.lengthComputable){
+          const percent = (e.loaded/e.total)*100;
+          progressBar.firstElementChild.style.width = percent + '%';
+        }
+      };
+      xhr.onload = ()=>{
+        if(xhr.status===200){
+          const {url} = JSON.parse(xhr.responseText);
+          result.innerHTML = `✅ Sukses! <br><a href="${url}" target="_blank">${url}</a>`;
+        }else{
+          result.textContent = '❌ Gagal upload';
+        }
+        uploadBtn.disabled = false;
+        progressBar.style.display='none';
+      };
+      xhr.send(file);
+    });
+  </script>
+</body>
+</html>
